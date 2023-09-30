@@ -7,3 +7,5 @@ The fieldOutput result S_MISES is stored in each frame of the odb file.
 Usage:
 
     abaqus python s_mises.py Job-1.odb [Job-2.odb ...]
+    
+![image](https://github.com/costerwi/abaqus-signed-mises/assets/7069475/b69663a9-d2c1-4193-bfd7-da950d73e6a6)
