@@ -13,7 +13,7 @@ Carl Osterwisch, September 2023
 from __future__ import print_function, with_statement  # use python3 syntax
 import numpy as np
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 foName = 'S_MISES'  # fieldOutput name for results
 
 def onJobCompletion():
