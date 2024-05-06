@@ -13,7 +13,7 @@ Carl Osterwisch, September 2023
 from __future__ import print_function, with_statement  # use python3 syntax
 import numpy as np
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 foName = 'S_MISES'  # fieldOutput name for results
 
 def onJobCompletion():
@@ -30,20 +30,34 @@ def sign_trace(A):
 
     Returns +1 for trace >= 0, -1 otherwise
 
-    Example:
-    >>> S11, S22, S33, S12, S13, S23 = 0.1, 0.2, -0.4, 0.4, 0.5, 0.6
+    Examples:
+    >>> S11, S22, S33, S12, S13, S23 = -0.4, 0.2, 0.1, 0.4, 0.5, 0.6
     >>> sign_trace( [[S11, S22, S33, S12, S13, S23],
     ...              [0.2, 0.0, -.2, 0.3, -.5, 0.0],
     ...              [0.2, 0.0, 0.0, 0.3, -.5, 0.0]] )
-    array([[-1.],
-           [ 1.],
-           [ 1.]])
+    array([[-1.], [ 1.], [ 1.]])
+
+    >>> sign_trace( [[S11, S22, S33, S12],
+    ...              [0.2, 0.0, -.2, 0.3],
+    ...              [0.2, 0.0, 0.0, 0.3]] )
+    array([[-1.], [ 1.], [ 1.]])
+
+    >>> sign_trace( [[S11, S22, S12],
+    ...              [0.2, 0.0, 0.3],
+    ...              [0.2, 0.0, 0.3]] )
+    array([[-1.], [ 1.], [ 1.]])
     """
 
     A = np.asarray(A)
     assert 2 == len(A.shape), "Data must be a 2D array of tensors"
-    assert 6 == A.shape[1], "Data elements must be in Abaqus symmetric tensor format"
-    trace = np.sum(A[:,0:3], axis=1)
+    if 6 == A.shape[1]: # S11, S22, S33, S12, S13, S23
+        trace = np.sum(A[:,0:3], axis=1)
+    elif 4 == A.shape[1]: # S11, S22, S33, S12
+        trace = np.sum(A[:,0:3], axis=1)
+    elif 3 == A.shape[1]: # S11, S22, S12
+        trace = np.sum(A[:,0:2], axis=1)
+    else:
+        raise RuntimeError("Tensor length {} is unsupported".format(A.shape[1]))
     result = np.ones_like(trace)
     result[trace < 0] = -1
     return result.reshape([-1,1])
@@ -62,15 +76,19 @@ def calculate(outputFrame):
     )
 
     for Sblock, MISESblock in zip(S.bulkDataBlocks, MISES.bulkDataBlocks):
-        options = dict(
-            position=MISESblock.position,
-            instance=MISESblock.instance,
-            labels=np.unique(MISESblock.elementLabels),
-            data=sign_trace(Sblock.data)*MISESblock.data,
-        )
-        if np.any(MISESblock.sectionPoint):
-            options["sectionPoint"] = MISESblock.sectionPoint
-        S_MISES.addData(**options)
+        try:
+            options = dict(
+                position=MISESblock.position,
+                instance=MISESblock.instance,
+                labels=np.unique(MISESblock.elementLabels),
+                data=sign_trace(Sblock.data)*MISESblock.data,
+            )
+            if np.any(MISESblock.sectionPoint):
+                options["sectionPoint"] = MISESblock.sectionPoint
+        except RuntimeError as E:
+            print(E)
+        else:
+            S_MISES.addData(**options)
 
 
 def fromOdb(odbName):
