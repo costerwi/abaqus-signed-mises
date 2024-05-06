@@ -76,15 +76,19 @@ def calculate(outputFrame):
     )
 
     for Sblock, MISESblock in zip(S.bulkDataBlocks, MISES.bulkDataBlocks):
-        options = dict(
-            position=MISESblock.position,
-            instance=MISESblock.instance,
-            labels=np.unique(MISESblock.elementLabels),
-            data=sign_trace(Sblock.data)*MISESblock.data,
-        )
-        if np.any(MISESblock.sectionPoint):
-            options["sectionPoint"] = MISESblock.sectionPoint
-        S_MISES.addData(**options)
+        try:
+            options = dict(
+                position=MISESblock.position,
+                instance=MISESblock.instance,
+                labels=np.unique(MISESblock.elementLabels),
+                data=sign_trace(Sblock.data)*MISESblock.data,
+            )
+            if np.any(MISESblock.sectionPoint):
+                options["sectionPoint"] = MISESblock.sectionPoint
+        except RuntimeError as E:
+            print(E)
+        else:
+            S_MISES.addData(**options)
 
 
 def fromOdb(odbName):
