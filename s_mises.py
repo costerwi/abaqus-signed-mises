@@ -103,9 +103,10 @@ def fromOdb(odbName):
 
     with closing(openOdb(odbName)) as odb:
         for step in odb.steps.values():
+            print(step.name)
             for frame in step.frames:
-                if "S" in frame.fieldOutputs and not foName in frame.fieldOutputs:
-                    print(step.name, frame.description)
+                if "S" in frame.fieldOutputs:
+                    print(frame.description)
                     calculate(frame)
 
 
