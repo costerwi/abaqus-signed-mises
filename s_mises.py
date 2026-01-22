@@ -68,23 +68,27 @@ def calculate(outputFrame):
     import abaqusConstants
 
     S = outputFrame.fieldOutputs['S']
-    MISES = S.getScalarField(invariant=abaqusConstants.MISES)
-    S_MISES = outputFrame.FieldOutput(
-        name=foName,
-        description="Signed Mises equivalent stress",
-        type=MISES.type,
-    )
+    if foName in outputFrame.fieldOutputs:
+        S_MISES = outputFrame.fieldOutputs[foName]
+    else:
+        S_MISES = outputFrame.FieldOutput(
+                name=foName,
+                description="Signed Mises equivalent stress",
+                type=abaqusConstants.SCALAR,
+            )
 
-    for Sblock, MISESblock in zip(S.bulkDataBlocks, MISES.bulkDataBlocks):
+    for block in S.bulkDataBlocks:
+        if not hasattr(block.mises, "reshape"):
+            continue  # no mises data available
         try:
             options = dict(
-                position=MISESblock.position,
-                instance=MISESblock.instance,
-                labels=np.unique(MISESblock.elementLabels),
-                data=sign_trace(Sblock.data)*MISESblock.data,
+                position=block.position,
+                instance=block.instance,
+                labels=np.unique(block.elementLabels),
+                data=sign_trace(block.data)*block.mises.reshape(-1, 1),
             )
-            if np.any(MISESblock.sectionPoint):
-                options["sectionPoint"] = MISESblock.sectionPoint
+            if np.any(block.sectionPoint):
+                options["sectionPoint"] = block.sectionPoint
         except RuntimeError as E:
             print(E)
         else:
