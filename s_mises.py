@@ -13,7 +13,7 @@ Carl Osterwisch, September 2023
 from __future__ import print_function, with_statement  # use python3 syntax
 import numpy as np
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 foName = 'S_MISES'  # fieldOutput name for results
 
 def onJobCompletion():
@@ -68,23 +68,27 @@ def calculate(outputFrame):
     import abaqusConstants
 
     S = outputFrame.fieldOutputs['S']
-    MISES = S.getScalarField(invariant=abaqusConstants.MISES)
-    S_MISES = outputFrame.FieldOutput(
-        name=foName,
-        description="Signed Mises equivalent stress",
-        type=MISES.type,
-    )
+    if foName in outputFrame.fieldOutputs:
+        S_MISES = outputFrame.fieldOutputs[foName]
+    else:
+        S_MISES = outputFrame.FieldOutput(
+                name=foName,
+                description="Signed Mises equivalent stress",
+                type=abaqusConstants.SCALAR,
+            )
 
-    for Sblock, MISESblock in zip(S.bulkDataBlocks, MISES.bulkDataBlocks):
+    for block in S.bulkDataBlocks:
+        if not hasattr(block.mises, "reshape"):
+            continue  # no mises data available
         try:
             options = dict(
-                position=MISESblock.position,
-                instance=MISESblock.instance,
-                labels=np.unique(MISESblock.elementLabels),
-                data=sign_trace(Sblock.data)*MISESblock.data,
+                position=block.position,
+                instance=block.instance,
+                labels=np.unique(block.elementLabels),
+                data=sign_trace(block.data)*block.mises.reshape(-1, 1),
             )
-            if np.any(MISESblock.sectionPoint):
-                options["sectionPoint"] = MISESblock.sectionPoint
+            if np.any(block.sectionPoint):
+                options["sectionPoint"] = block.sectionPoint
         except RuntimeError as E:
             print(E)
         else:
@@ -99,9 +103,10 @@ def fromOdb(odbName):
 
     with closing(openOdb(odbName)) as odb:
         for step in odb.steps.values():
+            print(step.name)
             for frame in step.frames:
-                if "S" in frame.fieldOutputs and not foName in frame.fieldOutputs:
-                    print(step.name, frame.description)
+                if "S" in frame.fieldOutputs:
+                    print(frame.description)
                     calculate(frame)
 
 
